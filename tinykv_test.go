@@ -58,6 +58,50 @@ func TestGetPut(t *testing.T) {
 	assert.NotEqual(2, v)
 }
 
+func TestKeys(t *testing.T) {
+	assert := assert.New(t)
+	rg := New(0)
+	defer rg.Stop()
+
+	rg.Put("1", 1)
+	rg.Put("2", 2)
+
+	keys := rg.Keys()
+	assert.NotEmpty(keys)
+	assert.Contains(keys, "1")
+	assert.Contains(keys, "2")
+}
+
+func TestValues(t *testing.T) {
+	assert := assert.New(t)
+	rg := New(0)
+	defer rg.Stop()
+
+	rg.Put("1", 1)
+	rg.Put("2", 2)
+
+	values := rg.Values()
+	assert.NotEmpty(values)
+	assert.Contains(values, 1)
+	assert.Contains(values, 2)
+}
+
+func TestEntries(t *testing.T) {
+	assert := assert.New(t)
+	rg := New(0)
+	defer rg.Stop()
+
+	rg.Put("1", 1)
+	rg.Put("2", 2)
+	rg.Put("3", 3, ExpiresAfter(time.Minute*50))
+
+	entries := rg.Entries()
+	assert.NotEmpty(entries)
+	assert.NotNil(entries["1"])
+	assert.NotNil(entries["2"])
+	assert.NotNil(entries["3"])
+}
+
 func TestTimeout(t *testing.T) {
 	assert := assert.New(t)
 	rcvd := make(chan string, 100)

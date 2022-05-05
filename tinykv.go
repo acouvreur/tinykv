@@ -6,8 +6,6 @@ import (
 	"time"
 )
 
-//-----------------------------------------------------------------------------
-
 type timeout struct {
 	expiresAt    time.Time
 	expiresAfter time.Duration
@@ -77,6 +75,9 @@ type entry struct {
 type KV interface {
 	Delete(k string)
 	Get(k string) (v interface{}, ok bool)
+	Keys() (keys []string)
+	Values() (values []interface{})
+	Entries() (entries map[string]entry)
 	Put(k string, v interface{}, options ...PutOption) error
 	Take(k string) (v interface{}, ok bool)
 	Stop()
@@ -175,6 +176,51 @@ func (kv *store) Get(k string) (interface{}, bool) {
 		return nil, false
 	}
 	return e.value, ok
+}
+
+func (kv *store) Keys() (keys []string) {
+	kv.mx.Lock()
+	defer kv.mx.Unlock()
+
+	for k := range kv.kv {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+func (kv *store) Values() (values []interface{}) {
+	kv.mx.Lock()
+	defer kv.mx.Unlock()
+
+	for _, v := range kv.kv {
+		values = append(values, v.value)
+	}
+	return values
+}
+
+func (kv *store) Entries() (entries map[string]entry) {
+	kv.mx.Lock()
+	defer kv.mx.Unlock()
+
+	entries = make(map[string]entry)
+	for k, v := range kv.kv {
+
+		e := entry{
+			value: v.value,
+		}
+		if v.timeout != nil {
+
+			t := &timeout{
+				expiresAt:    v.expiresAt,
+				expiresAfter: v.expiresAfter,
+				isSliding:    v.isSliding,
+				key:          k,
+			}
+			e.timeout = t
+		}
+		entries[k] = e
+	}
+	return entries
 }
 
 // Put puts an entry inside kv store with provided options
