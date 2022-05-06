@@ -1,6 +1,7 @@
 package tinykv
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"strconv"
@@ -100,6 +101,54 @@ func TestEntries(t *testing.T) {
 	assert.NotNil(entries["1"])
 	assert.NotNil(entries["2"])
 	assert.NotNil(entries["3"])
+}
+
+func TestMarshalJSON(t *testing.T) {
+	assert := assert.New(t)
+	rg := New(0)
+	defer rg.Stop()
+
+	rg.Put("1", 1)
+	rg.Put("2", 2)
+	rg.Put("3", 3, ExpiresAfter(time.Minute*50))
+	rg.Put("4", &struct {
+		State string
+		Name  string
+	}{
+		State: "started",
+		Name:  "Test",
+	}, ExpiresAfter(time.Minute*50))
+
+	jsonb, err := json.Marshal(rg)
+	assert.Nil(err)
+	json := string(jsonb)
+	println(json)
+	assert.Regexp("{\"1\":{\"value\":1},\"2\":{\"value\":2},\"3\":{\"value\":3,\"expiresAt\":\"\\d\\d\\d\\d-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d.\\d\\d\\d\\d\\d\\d\\d\\d\\dZ\",\"expiresAfter\":3000000000000,\"isSliding\":false},\"4\":{\"value\":{\"State\":\"started\",\"Name\":\"Test\"},\"expiresAt\":\"\\d\\d\\d\\d-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d.\\d\\d\\d\\d\\d\\d\\d\\d\\dZ\",\"expiresAfter\":3000000000000,\"isSliding\":false}}", json)
+}
+
+func TestUnmarshalJSON(t *testing.T) {
+	assert := assert.New(t)
+	in5Minutes := time.Now().Add(time.Minute * 5)
+	in5MinutesJson, err := json.Marshal(in5Minutes)
+	assert.Nil(err)
+	jsons := "{\"1\":{\"value\":1},\"2\":{\"value\":2},\"3\":{\"value\":3,\"expiresAt\":" + string(in5MinutesJson) + ",\"expiresAfter\":3000000000000,\"isSliding\":false}}"
+	println(jsons)
+
+	rg := New(0)
+	defer rg.Stop()
+
+	err = json.Unmarshal([]byte(jsons), &rg)
+	assert.Nil(err)
+
+	keys := rg.Keys()
+	fmt.Printf("%v\n", keys)
+	values := rg.Values()
+	fmt.Printf("%v\n", values)
+	fmt.Printf("%v\n", rg.Entries())
+	jsonb, err := json.Marshal(rg)
+	assert.Nil(err)
+	json := string(jsonb)
+	println(json)
 }
 
 func TestTimeout(t *testing.T) {

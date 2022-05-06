@@ -1,6 +1,7 @@
 package tinykv
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -81,6 +82,8 @@ type KV interface {
 	Put(k string, v interface{}, options ...PutOption) error
 	Take(k string) (v interface{}, ok bool)
 	Stop()
+	MarshalJSON() ([]byte, error)
+	UnmarshalJSON(b []byte) error
 }
 
 //-----------------------------------------------------------------------------
@@ -242,6 +245,71 @@ func (kv *store) Put(k string, v interface{}, options ...PutOption) error {
 		return kv.cas(k, e, opt.cas)
 	}
 	kv.kv[k] = e
+	return nil
+}
+
+func (kv *store) MarshalJSON() ([]byte, error) {
+	return json.Marshal(kv.kv)
+}
+
+func (e *entry) MarshalJSON() ([]byte, error) {
+	if e.timeout != nil {
+		return json.Marshal(&struct {
+			Value        interface{}   `json:"value"`
+			ExpiresAt    time.Time     `json:"expiresAt"`
+			ExpiresAfter time.Duration `json:"expiresAfter"`
+			IsSliding    bool          `json:"isSliding"`
+		}{
+			Value:        e.value,
+			ExpiresAt:    e.expiresAt,
+			ExpiresAfter: e.expiresAfter,
+			IsSliding:    e.isSliding,
+		})
+	} else {
+		return json.Marshal(&struct {
+			Value interface{} `json:"value"`
+		}{
+			Value: e.value,
+		})
+	}
+}
+
+type minimalEntry struct {
+	Value        interface{}
+	ExpiresAfter time.Duration
+}
+
+func (kv *store) UnmarshalJSON(b []byte) error {
+
+	var result map[string]minimalEntry
+
+	// Unmarshal or Decode the JSON to the interface.
+	json.Unmarshal([]byte(b), &result)
+
+	for k, v := range result {
+		// TODO: Handle sliding...
+		kv.Put(k, v.Value, ExpiresAfter(v.ExpiresAfter))
+	}
+
+	return nil
+}
+
+func (e *minimalEntry) UnmarshalJSON(b []byte) error {
+
+	result := &struct {
+		Value     interface{} `json:"value"`
+		ExpiresAt time.Time   `json:"expiresAt"`
+	}{}
+
+	// Unmarshal or Decode the JSON to the interface.
+	json.Unmarshal([]byte(b), &result)
+
+	e.Value = result.Value
+	if result.ExpiresAt.After(time.Now()) {
+		e.ExpiresAfter = time.Until(result.ExpiresAt)
+	}
+	// TODO: Handle sliding...
+
 	return nil
 }
 
