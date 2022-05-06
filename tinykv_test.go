@@ -122,7 +122,6 @@ func TestMarshalJSON(t *testing.T) {
 	jsonb, err := json.Marshal(rg)
 	assert.Nil(err)
 	json := string(jsonb)
-	println(json)
 	assert.Regexp("{\"1\":{\"value\":1},\"2\":{\"value\":2},\"3\":{\"value\":3,\"expiresAt\":\"\\d\\d\\d\\d-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d.\\d\\d\\d\\d\\d\\d\\d\\d\\dZ\",\"expiresAfter\":3000000000000,\"isSliding\":false},\"4\":{\"value\":{\"State\":\"started\",\"Name\":\"Test\"},\"expiresAt\":\"\\d\\d\\d\\d-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d.\\d\\d\\d\\d\\d\\d\\d\\d\\dZ\",\"expiresAfter\":3000000000000,\"isSliding\":false}}", json)
 }
 
@@ -132,23 +131,12 @@ func TestUnmarshalJSON(t *testing.T) {
 	in5MinutesJson, err := json.Marshal(in5Minutes)
 	assert.Nil(err)
 	jsons := "{\"1\":{\"value\":1},\"2\":{\"value\":2},\"3\":{\"value\":3,\"expiresAt\":" + string(in5MinutesJson) + ",\"expiresAfter\":3000000000000,\"isSliding\":false}}"
-	println(jsons)
 
 	rg := New(0)
 	defer rg.Stop()
 
 	err = json.Unmarshal([]byte(jsons), &rg)
 	assert.Nil(err)
-
-	keys := rg.Keys()
-	fmt.Printf("%v\n", keys)
-	values := rg.Values()
-	fmt.Printf("%v\n", values)
-	fmt.Printf("%v\n", rg.Entries())
-	jsonb, err := json.Marshal(rg)
-	assert.Nil(err)
-	json := string(jsonb)
-	println(json)
 }
 
 func TestTimeout(t *testing.T) {
