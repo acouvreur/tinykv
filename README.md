@@ -1,5 +1,7 @@
-[![GoDoc](https://godoc.org/github.com/dc0d/tinykv?status.svg)](https://godoc.org/github.com/dc0d/tinykv) [![Go Report Card](https://goreportcard.com/badge/github.com/dc0d/tinykv)](https://goreportcard.com/report/github.com/dc0d/tinykv)
+[![GoDoc](https://godoc.org/github.com/acouvreur/tinykv?status.svg)](https://godoc.org/github.com/acouvreur/tinykv) [![Go Report Card](https://goreportcard.com/badge/github.com/acouvreur/tinykv)](https://goreportcard.com/report/github.com/acouvreur/tinykv)
 <br/>
+
+Fork from https://godoc.org/github.com/dc0d/tinykv
 
 # tinykv
 tiny in-memory single-app kv (cache) with explicit and sliding expiration
@@ -12,7 +14,7 @@ tiny in-memory single-app kv (cache) with explicit and sliding expiration
 Get it using:
 
 ```bash
-$ go get gopkg.in/dc0d/tinykv.v4
+$ go get gopkg.in/acouvreur/tinykv.v4
 ```
 
 # v3
@@ -23,7 +25,7 @@ $ go get gopkg.in/dc0d/tinykv.v4
 Get it using:
 
 ```bash
-$ go get gopkg.in/dc0d/tinykv.v3
+$ go get gopkg.in/acouvreur/tinykv.v3
 ```
 
 # v2
@@ -31,7 +33,7 @@ $ go get gopkg.in/dc0d/tinykv.v3
 Get it using:
 
 ```bash
-$ go get gopkg.in/dc0d/tinykv.v2
+$ go get gopkg.in/acouvreur/tinykv.v2
 ```
 
 # v1
@@ -39,7 +41,7 @@ $ go get gopkg.in/dc0d/tinykv.v2
 Get it using:
 
 ```bash
-$ go get gopkg.in/dc0d/tinykv.v1
+$ go get gopkg.in/acouvreur/tinykv.v1
 ```
 
 Benchmarks:
