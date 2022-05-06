@@ -111,18 +111,11 @@ func TestMarshalJSON(t *testing.T) {
 	rg.Put("1", 1)
 	rg.Put("2", 2)
 	rg.Put("3", 3, ExpiresAfter(time.Minute*50))
-	rg.Put("4", &struct {
-		State string
-		Name  string
-	}{
-		State: "started",
-		Name:  "Test",
-	}, ExpiresAfter(time.Minute*50))
 
 	jsonb, err := json.Marshal(rg)
 	assert.Nil(err)
 	json := string(jsonb)
-	assert.Regexp("{\"1\":{\"value\":1},\"2\":{\"value\":2},\"3\":{\"value\":3,\"expiresAt\":\"\\d\\d\\d\\d-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d.\\d\\d\\d\\d\\d\\d\\d\\d\\dZ\",\"expiresAfter\":3000000000000,\"isSliding\":false},\"4\":{\"value\":{\"State\":\"started\",\"Name\":\"Test\"},\"expiresAt\":\"\\d\\d\\d\\d-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d.\\d\\d\\d\\d\\d\\d\\d\\d\\dZ\",\"expiresAfter\":3000000000000,\"isSliding\":false}}", json)
+	assert.Regexp("{\"1\":{\"value\":1},\"2\":{\"value\":2},\"3\":{\"value\":3,\"expiresAt\":\"\\d\\d\\d\\d-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d.\\d\\d\\d\\d\\d\\d\\d\\d\\dZ\",\"expiresAfter\":3000000000000,\"isSliding\":false}}", json)
 }
 
 func TestUnmarshalJSON(t *testing.T) {
