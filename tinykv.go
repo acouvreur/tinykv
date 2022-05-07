@@ -304,8 +304,8 @@ func (e *minimalEntry) UnmarshalJSON(b []byte) error {
 	// Unmarshal or Decode the JSON to the interface.
 	json.Unmarshal([]byte(b), &result)
 
-	e.Value = result.Value
 	if result.ExpiresAt.After(time.Now()) {
+		e.Value = result.Value
 		e.ExpiresAfter = time.Until(result.ExpiresAt)
 	}
 	// TODO: Handle sliding...
