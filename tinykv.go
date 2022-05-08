@@ -65,22 +65,22 @@ func (h *th) Pop() tohVal {
 
 //-----------------------------------------------------------------------------
 
-type entry struct {
+type entry[T any] struct {
 	*timeout
-	value interface{}
+	value T
 }
 
 //-----------------------------------------------------------------------------
 
 // KV is a registry for values (like/is a concurrent map) with timeout and sliding timeout
-type KV interface {
+type KV[T any] interface {
 	Delete(k string)
-	Get(k string) (v interface{}, ok bool)
+	Get(k string) (v T, ok bool)
 	Keys() (keys []string)
-	Values() (values []interface{})
-	Entries() (entries map[string]entry)
-	Put(k string, v interface{}, options ...PutOption) error
-	Take(k string) (v interface{}, ok bool)
+	Values() (values []T)
+	Entries() (entries map[string]entry[T])
+	Put(k string, v T, options ...PutOption) error
+	Take(k string) (v T, ok bool)
 	Stop()
 	MarshalJSON() ([]byte, error)
 	UnmarshalJSON(b []byte) error
@@ -121,25 +121,25 @@ func CAS(cas func(oldValue interface{}, found bool) bool) PutOption {
 //-----------------------------------------------------------------------------
 
 // store is a registry for values (like/is a concurrent map) with timeout and sliding timeout
-type store struct {
-	onExpire func(k string, v interface{})
+type store[T any] struct {
+	onExpire func(k string, v T)
 
 	stop               chan struct{}
 	stopOnce           sync.Once
 	expirationInterval time.Duration
 	mx                 sync.Mutex
-	kv                 map[string]*entry
+	kv                 map[string]*entry[T]
 	heap               th
 }
 
 // New creates a new *store, onExpire is for notification (must be fast).
-func New(expirationInterval time.Duration, onExpire ...func(k string, v interface{})) KV {
+func New[T any](expirationInterval time.Duration, onExpire ...func(k string, v T)) KV[T] {
 	if expirationInterval <= 0 {
 		expirationInterval = time.Second * 20
 	}
-	res := &store{
+	res := &store[T]{
 		stop:               make(chan struct{}),
-		kv:                 make(map[string]*entry),
+		kv:                 make(map[string]*entry[T]),
 		expirationInterval: expirationInterval,
 		heap:               th{},
 	}
@@ -151,12 +151,12 @@ func New(expirationInterval time.Duration, onExpire ...func(k string, v interfac
 }
 
 // Stop stops the goroutine
-func (kv *store) Stop() {
+func (kv *store[T]) Stop() {
 	kv.stopOnce.Do(func() { close(kv.stop) })
 }
 
 // Delete deletes an entry
-func (kv *store) Delete(k string) {
+func (kv *store[T]) Delete(k string) {
 	kv.mx.Lock()
 	defer kv.mx.Unlock()
 	delete(kv.kv, k)
@@ -164,24 +164,25 @@ func (kv *store) Delete(k string) {
 
 // Get gets an entry from KV store
 // and if a sliding timeout is set, it will be slided
-func (kv *store) Get(k string) (interface{}, bool) {
+func (kv *store[T]) Get(k string) (T, bool) {
+	var zero T
 	kv.mx.Lock()
 	defer kv.mx.Unlock()
 
 	e, ok := kv.kv[k]
 	if !ok {
-		return nil, ok
+		return zero, ok
 	}
 	e.slide()
 	if e.expired() {
-		go notifyExpirations(map[string]interface{}{k: e.value}, kv.onExpire)
+		go notifyExpirations(map[string]T{k: e.value}, kv.onExpire)
 		delete(kv.kv, k)
-		return nil, false
+		return zero, false
 	}
 	return e.value, ok
 }
 
-func (kv *store) Keys() (keys []string) {
+func (kv *store[T]) Keys() (keys []string) {
 	kv.mx.Lock()
 	defer kv.mx.Unlock()
 
@@ -191,7 +192,7 @@ func (kv *store) Keys() (keys []string) {
 	return keys
 }
 
-func (kv *store) Values() (values []interface{}) {
+func (kv *store[T]) Values() (values []T) {
 	kv.mx.Lock()
 	defer kv.mx.Unlock()
 
@@ -201,14 +202,14 @@ func (kv *store) Values() (values []interface{}) {
 	return values
 }
 
-func (kv *store) Entries() (entries map[string]entry) {
+func (kv *store[T]) Entries() (entries map[string]entry[T]) {
 	kv.mx.Lock()
 	defer kv.mx.Unlock()
 
-	entries = make(map[string]entry)
+	entries = make(map[string]entry[T])
 	for k, v := range kv.kv {
 
-		e := entry{
+		e := entry[T]{
 			value: v.value,
 		}
 		if v.timeout != nil {
@@ -227,12 +228,12 @@ func (kv *store) Entries() (entries map[string]entry) {
 }
 
 // Put puts an entry inside kv store with provided options
-func (kv *store) Put(k string, v interface{}, options ...PutOption) error {
+func (kv *store[T]) Put(k string, v T, options ...PutOption) error {
 	opt := &putOpt{}
 	for _, v := range options {
 		v(opt)
 	}
-	e := &entry{
+	e := &entry[T]{
 		value: v,
 	}
 	kv.mx.Lock()
@@ -248,14 +249,14 @@ func (kv *store) Put(k string, v interface{}, options ...PutOption) error {
 	return nil
 }
 
-func (kv *store) MarshalJSON() ([]byte, error) {
+func (kv *store[T]) MarshalJSON() ([]byte, error) {
 	return json.Marshal(kv.kv)
 }
 
-func (e *entry) MarshalJSON() ([]byte, error) {
+func (e *entry[T]) MarshalJSON() ([]byte, error) {
 	if e.timeout != nil {
 		return json.Marshal(&struct {
-			Value        interface{}   `json:"value"`
+			Value        T             `json:"value"`
 			ExpiresAt    time.Time     `json:"expiresAt"`
 			ExpiresAfter time.Duration `json:"expiresAfter"`
 			IsSliding    bool          `json:"isSliding"`
@@ -267,21 +268,21 @@ func (e *entry) MarshalJSON() ([]byte, error) {
 		})
 	} else {
 		return json.Marshal(&struct {
-			Value interface{} `json:"value"`
+			Value T `json:"value"`
 		}{
 			Value: e.value,
 		})
 	}
 }
 
-type minimalEntry struct {
-	Value        interface{}
+type minimalEntry[T any] struct {
+	Value        T
 	ExpiresAfter time.Duration
 }
 
-func (kv *store) UnmarshalJSON(b []byte) error {
+func (kv *store[T]) UnmarshalJSON(b []byte) error {
 
-	var result map[string]minimalEntry
+	var result map[string]minimalEntry[T]
 
 	// Unmarshal or Decode the JSON to the interface.
 	json.Unmarshal([]byte(b), &result)
@@ -294,11 +295,11 @@ func (kv *store) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (e *minimalEntry) UnmarshalJSON(b []byte) error {
+func (e *minimalEntry[T]) UnmarshalJSON(b []byte) error {
 
 	result := &struct {
-		Value     interface{} `json:"value"`
-		ExpiresAt time.Time   `json:"expiresAt"`
+		Value     T         `json:"value"`
+		ExpiresAt time.Time `json:"expiresAt"`
 	}{}
 
 	// Unmarshal or Decode the JSON to the interface.
@@ -313,9 +314,9 @@ func (e *minimalEntry) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (kv *store) cas(k string, e *entry, casFunc func(interface{}, bool) bool) error {
+func (kv *store[T]) cas(k string, e *entry[T], casFunc func(interface{}, bool) bool) error {
 	old, ok := kv.kv[k]
-	var oldValue interface{}
+	var oldValue T
 	if ok && old != nil {
 		oldValue = old.value
 	}
@@ -335,7 +336,8 @@ func (kv *store) cas(k string, e *entry, casFunc func(interface{}, bool) bool) e
 }
 
 // Take takes an entry out of kv store
-func (kv *store) Take(k string) (interface{}, bool) {
+func (kv *store[T]) Take(k string) (T, bool) {
+	var zero T
 	kv.mx.Lock()
 	defer kv.mx.Unlock()
 	e, ok := kv.kv[k]
@@ -343,12 +345,12 @@ func (kv *store) Take(k string) (interface{}, bool) {
 		delete(kv.kv, k)
 		return e.value, ok
 	}
-	return nil, ok
+	return zero, ok
 }
 
 //-----------------------------------------------------------------------------
 
-func (kv *store) expireLoop() {
+func (kv *store[T]) expireLoop() {
 	interval := kv.expirationInterval
 	expireTime := time.NewTimer(interval)
 	for {
@@ -371,7 +373,7 @@ func (kv *store) expireLoop() {
 	}
 }
 
-func (kv *store) expireFunc() time.Duration {
+func (kv *store[T]) expireFunc() time.Duration {
 	kv.mx.Lock()
 	defer kv.mx.Unlock()
 
@@ -379,7 +381,7 @@ func (kv *store) expireFunc() time.Duration {
 	if len(kv.heap) == 0 {
 		return interval
 	}
-	expired := make(map[string]interface{})
+	expired := make(map[string]T)
 	c := -1
 	for {
 		if len(kv.heap) == 0 {
@@ -429,9 +431,9 @@ REVAL:
 	return interval
 }
 
-func notifyExpirations(
-	expired map[string]interface{},
-	onExpire func(k string, v interface{})) {
+func notifyExpirations[T any](
+	expired map[string]T,
+	onExpire func(k string, v T)) {
 	if onExpire == nil {
 		return
 	}

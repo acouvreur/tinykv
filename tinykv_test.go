@@ -36,11 +36,11 @@ func TestTimeoutHeap(t *testing.T) {
 	assert.Equal(0, len(h))
 }
 
-var _ KV = &store{}
+var _ KV[int] = &store[int]{}
 
 func TestGetPut(t *testing.T) {
 	assert := assert.New(t)
-	rg := New(0)
+	rg := New[int](0)
 	defer rg.Stop()
 
 	rg.Put("1", 1)
@@ -61,7 +61,7 @@ func TestGetPut(t *testing.T) {
 
 func TestKeys(t *testing.T) {
 	assert := assert.New(t)
-	rg := New(0)
+	rg := New[int](0)
 	defer rg.Stop()
 
 	rg.Put("1", 1)
@@ -75,7 +75,7 @@ func TestKeys(t *testing.T) {
 
 func TestValues(t *testing.T) {
 	assert := assert.New(t)
-	rg := New(0)
+	rg := New[int](0)
 	defer rg.Stop()
 
 	rg.Put("1", 1)
@@ -89,7 +89,7 @@ func TestValues(t *testing.T) {
 
 func TestEntries(t *testing.T) {
 	assert := assert.New(t)
-	rg := New(0)
+	rg := New[int](0)
 	defer rg.Stop()
 
 	rg.Put("1", 1)
@@ -105,7 +105,7 @@ func TestEntries(t *testing.T) {
 
 func TestMarshalJSON(t *testing.T) {
 	assert := assert.New(t)
-	rg := New(0)
+	rg := New[int](0)
 	defer rg.Stop()
 
 	rg.Put("1", 1)
@@ -125,7 +125,7 @@ func TestUnmarshalJSON(t *testing.T) {
 	assert.Nil(err)
 	jsons := "{\"1\":{\"value\":1},\"2\":{\"value\":2},\"3\":{\"value\":3,\"expiresAt\":" + string(in5MinutesJson) + ",\"expiresAfter\":3000000000000,\"isSliding\":false}}"
 
-	rg := New(0)
+	rg := New[int](0)
 	defer rg.Stop()
 
 	err = json.Unmarshal([]byte(jsons), &rg)
@@ -170,7 +170,7 @@ OUT01:
 
 func Test02(t *testing.T) {
 	assert := assert.New(t)
-	rg := New(time.Millisecond * 30)
+	rg := New[int](time.Millisecond * 30)
 
 	rg.Put("1", 1)
 	v, ok := rg.Get("1")
@@ -288,7 +288,7 @@ func Test06(t *testing.T) {
 func Test07(t *testing.T) {
 	assert := assert.New(t)
 
-	kv := New(-1)
+	kv := New[int](-1)
 	kv.Put("1", 1)
 	v, ok := kv.Take("1")
 	assert.True(ok)
@@ -301,7 +301,7 @@ func Test07(t *testing.T) {
 func Test08(t *testing.T) {
 	assert := assert.New(t)
 
-	kv := New(-1)
+	kv := New[interface{}](-1)
 	err := kv.Put(
 		"QQG", "G",
 		CAS(func(interface{}, bool) bool { return true }),
@@ -319,7 +319,7 @@ func Test09IgnoreTimeoutParamsOnCAS(t *testing.T) {
 
 	key := "QQG"
 
-	kv := New(time.Millisecond)
+	kv := New[interface{}](time.Millisecond)
 	err := kv.Put(
 		key, "G",
 		CAS(func(interface{}, bool) bool { return true }),
@@ -350,7 +350,7 @@ func Test10(t *testing.T) {
 
 	key := "QQG"
 
-	kv := New(time.Millisecond)
+	kv := New[interface{}](time.Millisecond)
 	err := kv.Put(
 		key, "G",
 		CAS(func(interface{}, bool) bool { return true }),
@@ -505,7 +505,7 @@ func TestOrdering(t *testing.T) {
 func TestCASOldFound(t *testing.T) {
 	assert := assert.New(t)
 
-	kv := New(time.Millisecond * 10)
+	kv := New[interface{}](time.Millisecond * 10)
 	key := "KEY01"
 	value := "VALUE01"
 	err := kv.Put(
@@ -550,7 +550,7 @@ func ExampleNew() {
 	key := "KEY"
 	value := "VALUE"
 
-	kv := New(time.Millisecond * 10)
+	kv := New[interface{}](time.Millisecond * 10)
 	defer kv.Stop()
 	kv.Put(key, value)
 	v, ok := kv.Get(key)
@@ -568,14 +568,14 @@ func ExampleNew() {
 }
 
 func BenchmarkGetNoValue(b *testing.B) {
-	rg := New(-1)
+	rg := New[interface{}](-1)
 	for n := 0; n < b.N; n++ {
 		rg.Get("1")
 	}
 }
 
 func BenchmarkGetValue(b *testing.B) {
-	rg := New(-1)
+	rg := New[interface{}](-1)
 	rg.Put("1", 1)
 	for n := 0; n < b.N; n++ {
 		rg.Get("1")
@@ -583,7 +583,7 @@ func BenchmarkGetValue(b *testing.B) {
 }
 
 func BenchmarkGetSlidingTimeout(b *testing.B) {
-	rg := New(-1)
+	rg := New[interface{}](-1)
 	rg.Put("1", 1, ExpiresAfter(time.Second*10))
 	for n := 0; n < b.N; n++ {
 		rg.Get("1")
@@ -591,14 +591,14 @@ func BenchmarkGetSlidingTimeout(b *testing.B) {
 }
 
 func BenchmarkPutOne(b *testing.B) {
-	rg := New(-1)
+	rg := New[interface{}](-1)
 	for n := 0; n < b.N; n++ {
 		rg.Put("1", 1)
 	}
 }
 
 func BenchmarkPutN(b *testing.B) {
-	rg := New(-1)
+	rg := New[interface{}](-1)
 	for n := 0; n < b.N; n++ {
 		k := strconv.Itoa(n)
 		rg.Put(k, n)
@@ -606,14 +606,14 @@ func BenchmarkPutN(b *testing.B) {
 }
 
 func BenchmarkPutExpire(b *testing.B) {
-	rg := New(-1)
+	rg := New[interface{}](-1)
 	for n := 0; n < b.N; n++ {
 		rg.Put("1", 1, ExpiresAfter(time.Second*10))
 	}
 }
 
 func BenchmarkCASTrue(b *testing.B) {
-	rg := New(-1)
+	rg := New[interface{}](-1)
 	rg.Put("1", 1)
 	for n := 0; n < b.N; n++ {
 		rg.Put("1", 2, CAS(func(interface{}, bool) bool { return true }))
@@ -621,7 +621,7 @@ func BenchmarkCASTrue(b *testing.B) {
 }
 
 func BenchmarkCASFalse(b *testing.B) {
-	rg := New(-1)
+	rg := New[interface{}](-1)
 	rg.Put("1", 1)
 	for n := 0; n < b.N; n++ {
 		rg.Put("1", 2, CAS(func(interface{}, bool) bool { return false }))
