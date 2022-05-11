@@ -250,6 +250,8 @@ func (kv *store[T]) Put(k string, v T, options ...PutOption) error {
 }
 
 func (kv *store[T]) MarshalJSON() ([]byte, error) {
+	kv.mx.Lock()
+	defer kv.mx.Unlock()
 	return json.Marshal(kv.kv)
 }
 
